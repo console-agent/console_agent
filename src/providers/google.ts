@@ -5,20 +5,24 @@
  */
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { ToolLoopAgent, Output } from 'ai';
-import * as z from 'zod';
+import { ToolLoopAgent, Output, jsonSchema } from 'ai';
 import type { AgentConfig, AgentCallOptions, AgentResult, PersonaDefinition, ToolCall } from '../types.js';
 import { logDebug } from '../utils/format.js';
 
-// ─── Structured Output Schema ────────────────────────────────────────────────
+// ─── Structured Output Schema (JSON Schema for compatibility) ────────────────
 
-const agentOutputSchema = z.object({
-  success: z.boolean().describe('Whether the task was completed successfully'),
-  summary: z.string().describe('One-line human-readable conclusion'),
-  reasoning: z.string().optional().describe('Your thought process'),
-  data: z.record(z.unknown()).describe('Structured findings as key-value pairs'),
-  actions: z.array(z.string()).describe('List of tools/steps you used'),
-  confidence: z.number().min(0).max(1).describe('0-1 confidence score'),
+const agentJsonSchema = jsonSchema({
+  type: 'object',
+  properties: {
+    success: { type: 'boolean', description: 'Whether the task was completed successfully' },
+    summary: { type: 'string', description: 'One-line human-readable conclusion' },
+    reasoning: { type: 'string', description: 'Your thought process' },
+    data: { type: 'object', additionalProperties: true, description: 'Structured findings as key-value pairs' },
+    actions: { type: 'array', items: { type: 'string' }, description: 'List of tools/steps you used' },
+    confidence: { type: 'number', minimum: 0, maximum: 1, description: '0-1 confidence score' },
+  },
+  required: ['success', 'summary', 'data', 'actions', 'confidence'],
+  additionalProperties: false,
 });
 
 // ─── Provider ────────────────────────────────────────────────────────────────
@@ -92,7 +96,7 @@ export async function callGoogle(
     model: google(modelName),
     instructions: persona.systemPrompt,
     maxOutputTokens: config.budget.maxTokensPerCall,
-    output: Output.object({ schema: agentOutputSchema }),
+    output: Output.object({ schema: agentJsonSchema }),
     providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
     onStepFinish: (step) => {
       // Collect tool calls from each step
@@ -122,8 +126,21 @@ export async function callGoogle(
 
   // If we got structured output, use it directly
   if (result.output) {
+    const output = result.output as {
+      success: boolean;
+      summary: string;
+      reasoning?: string;
+      data: Record<string, unknown>;
+      actions: string[];
+      confidence: number;
+    };
     return {
-      ...result.output,
+      success: output.success,
+      summary: output.summary,
+      reasoning: output.reasoning,
+      data: output.data,
+      actions: output.actions,
+      confidence: output.confidence,
       metadata: {
         model: modelName,
         tokensUsed,
