@@ -8,6 +8,8 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import { updateConfig, executeAgent } from '../../src/agent.js';
 import type { AgentResult } from '../../src/types.js';
+import * as zod from 'zod';
+const z = zod.z ?? zod;
 
 const API_KEY = process.env.GEMINI_API_KEY;
 
@@ -142,6 +144,84 @@ describeE2E('E2E: Real Gemini API calls', () => {
     // Model may return success:false when it detects performance issues (correct behavior)
     expect(typeof result.success).toBe('boolean');
     console.log('Complex context result:', JSON.stringify(result, null, 2));
+  });
+});
+
+describeE2E('E2E: Custom Structured Output (schema & responseFormat)', () => {
+  beforeAll(() => {
+    updateConfig({
+      apiKey: API_KEY,
+      model: 'gemini-2.5-flash-lite',
+      mode: 'blocking',
+      logLevel: 'info',
+      anonymize: false,
+      timeout: 25000,
+    });
+  });
+
+  it('Zod schema — returns typed structured output', async () => {
+    const EmailValidation = z.object({
+      isValid: z.boolean(),
+      reason: z.string(),
+      suggestions: z.array(z.string()),
+    });
+
+    const result = await executeAgent(
+      'Validate this email address and explain why it is or is not valid',
+      'not-a-real-email@',
+      { schema: EmailValidation },
+    );
+
+    expectValidResult(result);
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveProperty('isValid');
+    expect(typeof result.data.isValid).toBe('boolean');
+    expect(typeof result.data.reason).toBe('string');
+    expect(Array.isArray(result.data.suggestions)).toBe(true);
+    console.log('Zod schema result:', JSON.stringify(result, null, 2));
+  });
+
+  it('responseFormat JSON schema — returns structured output', async () => {
+    const result = await executeAgent(
+      'Analyze this code for potential security issues',
+      'const x = eval(userInput);',
+      {
+        responseFormat: {
+          type: 'json_object',
+          schema: {
+            type: 'object',
+            properties: {
+              severity: { type: 'string', description: 'One of: low, medium, high, critical' },
+              issue: { type: 'string', description: 'Description of the issue' },
+              fix: { type: 'string', description: 'Suggested fix' },
+            },
+            required: ['severity', 'issue', 'fix'],
+          },
+        },
+      },
+    );
+
+    expectValidResult(result);
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveProperty('severity');
+    expect(result.data).toHaveProperty('issue');
+    expect(result.data).toHaveProperty('fix');
+    expect(typeof result.data.severity).toBe('string');
+    expect(typeof result.data.issue).toBe('string');
+    expect(typeof result.data.fix).toBe('string');
+    console.log('responseFormat result:', JSON.stringify(result, null, 2));
+  });
+
+  it('no custom schema — returns default AgentResult format', async () => {
+    const result = await executeAgent('What is 1 + 1? Answer concisely.');
+
+    expectValidResult(result);
+    expect(typeof result.success).toBe('boolean');
+    expect(typeof result.summary).toBe('string');
+    // Default schema includes these standard fields
+    expect(typeof result.confidence).toBe('number');
+    expect(Array.isArray(result.actions)).toBe(true);
+    console.log('Default schema result:', JSON.stringify(result, null, 2));
   });
 });
 

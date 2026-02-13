@@ -35,6 +35,7 @@ export type {
   AgentCallOptions,
   AgentResult,
   AgentFunction,
+  ResponseFormat,
   ToolCall,
   PersonaName,
   PersonaDefinition,

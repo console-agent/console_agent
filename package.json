@@ -1,6 +1,6 @@
 {
   "name": "@console-agent/agent",
-  "version": "1.0.0",
+  "version": "1.1.1",
   "description": "Drop console.agent(...) anywhere in your code to execute agentic workflows — as easy as console.log()",
   "license": "MIT",
   "author": "Pavel",
@@ -48,6 +48,10 @@
     "llm",
     "tool-calling"
   ],
+  "homepage": "https://console-agent.github.io",
+  "bugs": {
+    "url": "https://github.com/console-agent/console_agent/issues"
+  },
   "repository": {
     "type": "git",
     "url": "https://github.com/console-agent/console_agent.git"

@@ -8,6 +8,7 @@ import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { ToolLoopAgent, Output, jsonSchema } from 'ai';
 import type { AgentConfig, AgentCallOptions, AgentResult, PersonaDefinition, ToolCall } from '../types.js';
 import { logDebug } from '../utils/format.js';
+import { z } from 'zod';
 
 // ─── Structured Output Schema (JSON Schema compatible with Gemini) ───────────
 // Gemini requires OBJECT types to have non-empty `properties`.
@@ -91,12 +92,36 @@ export async function callGoogle(
   // Collect tool calls across steps
   const collectedToolCalls: ToolCall[] = [];
 
+  // ─── Determine output schema ─────────────────────────────────────────────
+  // Priority: options.schema (Zod) > options.responseFormat (JSON Schema) > default
+  const useCustomSchema = !!(options?.schema || options?.responseFormat);
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  let outputConfig: any;
+
+  if (options?.schema) {
+    // Zod schema — user passed a z.object(...) or similar
+    if (options.responseFormat) {
+      logDebug('Both schema (Zod) and responseFormat provided — using schema (Zod)');
+    }
+    logDebug('Using custom Zod schema for structured output');
+    outputConfig = Output.object({ schema: options.schema });
+  } else if (options?.responseFormat) {
+    // Plain JSON Schema object
+    logDebug('Using custom JSON Schema (responseFormat) for structured output');
+    outputConfig = Output.object({ schema: jsonSchema(options.responseFormat.schema) });
+  } else {
+    // Default: standard AgentResult schema
+    outputConfig = Output.object({ schema: agentOutputSchema });
+  }
+
   // Create the ToolLoopAgent for multi-step reasoning
   const agent = new ToolLoopAgent({
     model: google(modelName),
-    instructions: persona.systemPrompt,
+    instructions: useCustomSchema
+      ? `${persona.systemPrompt}\n\nIMPORTANT: You must respond with structured data matching the requested output schema. Do not include AgentResult wrapper fields — just return the data matching the schema.`
+      : persona.systemPrompt,
     maxOutputTokens: config.budget.maxTokensPerCall,
-    output: Output.object({ schema: agentOutputSchema }),
+    output: outputConfig,
     providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
     onStepFinish: (step) => {
       // Collect tool calls from each step
@@ -125,7 +150,27 @@ export async function callGoogle(
 
   logDebug(`Response received: ${latencyMs}ms, ${tokensUsed} tokens`);
 
-  // If we got structured output, use it directly
+  // ─── Custom schema: wrap AI output in AgentResult ──────────────────────
+  if (useCustomSchema && result.output) {
+    const customData = result.output as Record<string, unknown>;
+    logDebug('Custom schema output received, wrapping in AgentResult');
+    return {
+      success: true,
+      summary: `Structured output returned (${Object.keys(customData).length} fields)`,
+      data: customData,
+      actions: collectedToolCalls.map((tc) => tc.name),
+      confidence: 1,
+      metadata: {
+        model: modelName,
+        tokensUsed,
+        latencyMs,
+        toolCalls: collectedToolCalls,
+        cached: false,
+      },
+    };
+  }
+
+  // ─── Default schema: use AgentResult fields directly ───────────────────
   if (result.output) {
     const output = result.output as {
       success: boolean;

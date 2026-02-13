@@ -97,6 +97,15 @@ export interface BudgetConfig {
   costCapDaily: number;
 }
 
+// ─── Response Format (plain JSON Schema) ─────────────────────────────────────
+
+export interface ResponseFormat {
+  /** Must be 'json_object' */
+  type: 'json_object';
+  /** JSON Schema object describing the desired output shape */
+  schema: Record<string, unknown>;
+}
+
 // ─── Call Options (per-call overrides) ───────────────────────────────────────
 
 export interface AgentCallOptions {
@@ -110,6 +119,20 @@ export interface AgentCallOptions {
   persona?: PersonaName;
   /** Override execution mode */
   mode?: 'fire-and-forget' | 'blocking';
+  /**
+   * Zod schema for typed structured output.
+   * When provided, the AI returns data matching this schema.
+   * The result is placed in `AgentResult.data`.
+   * Takes priority over `responseFormat` if both are specified.
+   */
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  schema?: any;
+  /**
+   * Plain JSON Schema for structured output (no Zod dependency needed).
+   * Use `{ type: 'json_object', schema: { ... } }` with a standard JSON Schema.
+   * The result is placed in `AgentResult.data`.
+   */
+  responseFormat?: ResponseFormat;
 }
 
 // ─── Global Config ───────────────────────────────────────────────────────────

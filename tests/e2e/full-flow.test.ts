@@ -12,6 +12,8 @@
  */
 
 import { describe, it, expect, beforeAll } from 'vitest';
+import * as zod from 'zod';
+const z = zod.z ?? zod;
 
 const API_KEY = process.env.GEMINI_API_KEY;
 const hasKey = API_KEY && API_KEY !== 'your-gemini-api-key-here';
@@ -160,5 +162,66 @@ describeE2E('Full User Flow — init() + console.agent()', () => {
     } else {
       console.log('\n⚡ App logic: Agent says valid —', result.summary);
     }
+  });
+
+  it('console.agent() with Zod schema — custom typed output', async () => {
+    const SentimentSchema = z.object({
+      sentiment: z.enum(['positive', 'negative', 'neutral']),
+      score: z.number(),
+      keywords: z.array(z.string()),
+    });
+
+    const result = await console.agent(
+      'Analyze the sentiment of this review',
+      'This product is amazing! Best purchase ever!',
+      { schema: SentimentSchema },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveProperty('sentiment');
+    expect(['positive', 'negative', 'neutral']).toContain(result.data.sentiment);
+    expect(typeof result.data.score).toBe('number');
+    expect(Array.isArray(result.data.keywords)).toBe(true);
+    // Metadata still available
+    expect(result.metadata.tokensUsed).toBeGreaterThan(0);
+    expect(result.metadata.latencyMs).toBeGreaterThan(0);
+
+    console.log('\n📐 Zod schema result:', JSON.stringify(result.data, null, 2));
+    console.log('   Tokens:', result.metadata.tokensUsed);
+  });
+
+  it('console.agent() with responseFormat — plain JSON schema', async () => {
+    const result = await console.agent(
+      'Extract key info from this text',
+      'John Doe, age 30, lives in New York, works as a software engineer.',
+      {
+        responseFormat: {
+          type: 'json_object',
+          schema: {
+            type: 'object',
+            properties: {
+              name: { type: 'string', description: 'Full name' },
+              age: { type: 'number', description: 'Age in years' },
+              city: { type: 'string', description: 'City of residence' },
+              job: { type: 'string', description: 'Job title' },
+            },
+            required: ['name', 'age', 'city', 'job'],
+          },
+        },
+      },
+    );
+
+    expect(result.success).toBe(true);
+    expect(result.data).toHaveProperty('name');
+    expect(result.data).toHaveProperty('age');
+    expect(result.data).toHaveProperty('city');
+    expect(result.data).toHaveProperty('job');
+    expect(typeof result.data.name).toBe('string');
+    expect(typeof result.data.age).toBe('number');
+    // Metadata still available
+    expect(result.metadata.latencyMs).toBeGreaterThan(0);
+
+    console.log('\n📋 responseFormat result:', JSON.stringify(result.data, null, 2));
+    console.log('   Tokens:', result.metadata.tokensUsed);
   });
 });

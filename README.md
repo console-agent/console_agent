@@ -14,9 +14,9 @@
 ## Install
 
 ```bash
-bun add @console-agent/agent @ai-sdk/google
+bun add @console-agent/agent
 # or
-npm install @console-agent/agent @ai-sdk/google
+npm install @console-agent/agent
 ```
 
 ## Quick Start
