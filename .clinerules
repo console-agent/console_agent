@@ -1,0 +1,28 @@
+# Console Agent - Project Intelligence
+
+## Project Overview
+- **Package:** @consoleag/console-agent
+- **Purpose:** Drop-in agentic workflows via `console.agent(...)` — as easy as console.log()
+- **License:** MIT
+- **AI Provider:** Google Gemini (v1.0 only)
+
+## Key Architecture Decisions
+- Bundler: tsup (dual ESM/CJS)
+- AI SDK: Vercel AI SDK (`ai` + `@ai-sdk/google`)
+- Console styling: chalk v5 + ora v8
+- Testing: vitest
+- Config: module-level singleton pattern
+- console.agent is a Proxy-based callable with persona methods
+
+## Development Patterns
+- All source in `src/`, tests in `tests/`
+- TypeScript strict mode
+- Fire-and-forget is default execution mode
+- Personas auto-detect from prompt keywords
+- Budget/rate-limiting via token bucket algorithm
+
+## Important Constraints
+- v1.0: Google provider ONLY (no OpenAI/Anthropic)
+- No streaming, no multi-turn, no custom tools API
+- Node.js only (no browser support)
+- Must work with zero config (sensible defaults)
