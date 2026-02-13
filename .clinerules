@@ -1,7 +1,7 @@
 # Console Agent - Project Intelligence
 
 ## Project Overview
-- **Package:** @consoleag/console-agent
+- **Package:** @console-agent/agent
 - **Purpose:** Drop-in agentic workflows via `console.agent(...)` — as easy as console.log()
 - **License:** MIT
 - **AI Provider:** Google Gemini (v1.0 only)

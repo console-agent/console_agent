@@ -1,6 +1,6 @@
 /**
  * Google AI provider — integrates with Gemini via @ai-sdk/google + Vercel AI SDK.
- * Uses ToolLoopAgent for multi-step reasoning and tool calling.
+ * Uses ToolLoopAgent for multi-step reasoning with structured output.
  * This is the only provider in v1.0.
  */
 
@@ -9,19 +9,28 @@ import { ToolLoopAgent, Output, jsonSchema } from 'ai';
 import type { AgentConfig, AgentCallOptions, AgentResult, PersonaDefinition, ToolCall } from '../types.js';
 import { logDebug } from '../utils/format.js';
 
-// ─── Structured Output Schema (JSON Schema for compatibility) ────────────────
+// ─── Structured Output Schema (JSON Schema compatible with Gemini) ───────────
+// Gemini requires OBJECT types to have non-empty `properties`.
+// We define a `result` property inside `data` to satisfy this constraint.
 
-const agentJsonSchema = jsonSchema({
-  type: 'object',
+const agentOutputSchema = jsonSchema({
+  type: 'object' as const,
   properties: {
-    success: { type: 'boolean', description: 'Whether the task was completed successfully' },
-    summary: { type: 'string', description: 'One-line human-readable conclusion' },
-    reasoning: { type: 'string', description: 'Your thought process' },
-    data: { type: 'object', additionalProperties: true, description: 'Structured findings as key-value pairs' },
-    actions: { type: 'array', items: { type: 'string' }, description: 'List of tools/steps you used' },
-    confidence: { type: 'number', minimum: 0, maximum: 1, description: '0-1 confidence score' },
+    success: { type: 'boolean' as const, description: 'Whether the task was completed successfully' },
+    summary: { type: 'string' as const, description: 'One-line human-readable conclusion' },
+    reasoning: { type: 'string' as const, description: 'Your thought process' },
+    data: {
+      type: 'object' as const,
+      description: 'Structured findings as key-value pairs',
+      properties: {
+        result: { type: 'string' as const, description: 'Primary result or finding' },
+      },
+      additionalProperties: true,
+    },
+    actions: { type: 'array' as const, items: { type: 'string' as const }, description: 'List of tools/steps you used' },
+    confidence: { type: 'number' as const, minimum: 0, maximum: 1, description: '0-1 confidence score' },
   },
-  required: ['success', 'summary', 'data', 'actions', 'confidence'],
+  required: ['success', 'summary', 'data', 'actions', 'confidence'] as const,
   additionalProperties: false,
 });
 
@@ -45,42 +54,33 @@ export async function callGoogle(
     apiKey: config.apiKey ?? process.env.GEMINI_API_KEY ?? process.env.GOOGLE_GENERATIVE_AI_API_KEY,
   });
 
-  // Build provider options (Google built-in tools + thinking)
+  // Build provider options for thinking config
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const providerOptions: Record<string, any> = {};
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   const googleOpts: Record<string, any> = {};
 
-  // Add built-in tools if not in localOnly mode
-  if (!config.localOnly) {
-    const toolNames = options?.tools ?? persona.defaultTools;
-    logDebug(`Tools enabled: ${toolNames.join(', ')}`);
-
-    for (const tool of toolNames) {
-      const name = typeof tool === 'string' ? tool : tool.type;
-      if (name === 'code_execution') {
-        googleOpts['codeExecution'] = true;
-      }
-      if (name === 'google_search') {
-        googleOpts['googleSearch'] = true;
-      }
-    }
-  }
-
   // Add thinking config if specified
   if (options?.thinking) {
     const thinking = options.thinking;
     if (thinking.budget !== undefined) {
-      // Gemini 2.5 models use thinkingBudget
       googleOpts['thinkingConfig'] = { thinkingBudget: thinking.budget };
     } else if (thinking.level) {
-      // Gemini 3 models use thinkingLevel
-      googleOpts['thinkingConfig'] = { thinkingLevel: thinking.level.toUpperCase() };
+      googleOpts['thinkingConfig'] = { thinkingLevel: thinking.level };
     }
   }
 
   if (Object.keys(googleOpts).length > 0) {
     providerOptions['google'] = googleOpts;
+  }
+
+  // Note: Gemini's built-in tools (code_execution, google_search) are
+  // incompatible with structured JSON output (response_mime_type: application/json).
+  // Since structured output is essential for AgentResult, we skip built-in tools
+  // and rely on the model's knowledge + structured output instead.
+  if (!config.localOnly) {
+    const toolNames = options?.tools ?? persona.defaultTools;
+    logDebug(`Persona tools (informational): ${toolNames.join(', ')}`);
   }
 
   // Build the user message with context
@@ -91,12 +91,12 @@ export async function callGoogle(
   // Collect tool calls across steps
   const collectedToolCalls: ToolCall[] = [];
 
-  // Create the ToolLoopAgent
+  // Create the ToolLoopAgent for multi-step reasoning
   const agent = new ToolLoopAgent({
     model: google(modelName),
     instructions: persona.systemPrompt,
     maxOutputTokens: config.budget.maxTokensPerCall,
-    output: Output.object({ schema: agentJsonSchema }),
+    output: Output.object({ schema: agentOutputSchema }),
     providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
     onStepFinish: (step) => {
       // Collect tool calls from each step
@@ -104,6 +104,7 @@ export async function callGoogle(
         for (const tc of step.toolCalls) {
           collectedToolCalls.push({
             name: tc.toolName,
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any
             args: (tc as any).args ?? {},
             result: tc.toolName,
           });

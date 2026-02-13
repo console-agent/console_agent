@@ -1,12 +1,12 @@
 /**
- * @consoleag/console-agent
+ * @console-agent/agent
  *
  * Drop console.agent(...) anywhere in your code to execute agentic workflows
  * — as easy as console.log()
  *
  * @example
  * ```ts
- * import { init } from '@consoleag/console-agent';
+ * import { init } from '@console-agent/agent';
  *
  * // Optional configuration (works with sensible defaults)
  * init({ apiKey: process.env.GEMINI_API_KEY });

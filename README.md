@@ -1,8 +1,8 @@
-# @consoleag/console-agent
+# @console-agent/agent
 
 > Drop `console.agent(...)` anywhere in your code to execute agentic workflows — as easy as `console.log()`
 
-[![npm](https://img.shields.io/npm/v/@consoleag/console-agent)](https://www.npmjs.com/package/@consoleag/console-agent)
+[![npm](https://img.shields.io/npm/v/@console-agent/agent)](https://www.npmjs.com/package/@console-agent/agent)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
 ## Why?
@@ -14,15 +14,15 @@
 ## Install
 
 ```bash
-bun add @consoleag/console-agent @ai-sdk/google
+bun add @console-agent/agent @ai-sdk/google
 # or
-npm install @consoleag/console-agent @ai-sdk/google
+npm install @console-agent/agent @ai-sdk/google
 ```
 
 ## Quick Start
 
 ```typescript
-import '@consoleag/console-agent';
+import '@console-agent/agent';
 
 // That's it! console.agent is now available everywhere.
 
@@ -42,7 +42,7 @@ console.agent.architect("review this API design", endpoint);
 ## Configuration
 
 ```typescript
-import { init } from '@consoleag/console-agent';
+import { init } from '@console-agent/agent';
 
 init({
   apiKey: process.env.GEMINI_API_KEY,    // Or set GEMINI_API_KEY env var

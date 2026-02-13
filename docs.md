@@ -1,4 +1,4 @@
-# @consoleag/console-agent — Documentation
+# @console-agent/agent — Documentation
 
 ## Table of Contents
 - [Getting Started](#getting-started)
@@ -22,9 +22,9 @@
 ### Installation
 
 ```bash
-bun add @consoleag/console-agent @ai-sdk/google
+bun add @console-agent/agent @ai-sdk/google
 # or
-npm install @consoleag/console-agent @ai-sdk/google
+npm install @console-agent/agent @ai-sdk/google
 ```
 
 ### Set your API key
@@ -43,7 +43,7 @@ Get a free API key at [https://aistudio.google.com/apikey](https://aistudio.goog
 
 ```typescript
 // Just import — console.agent is automatically available
-import '@consoleag/console-agent';
+import '@console-agent/agent';
 
 // Fire-and-forget (default) — logs results, never blocks your app
 console.agent("analyze this error", error);
@@ -56,7 +56,7 @@ console.log(result.success, result.summary, result.data);
 ### Quick Start (With Config)
 
 ```typescript
-import { init } from '@consoleag/console-agent';
+import { init } from '@console-agent/agent';
 
 init({
   apiKey: process.env.GEMINI_API_KEY,
@@ -112,7 +112,7 @@ console.agent("prompt", context, options)
 Configure the agent. Call once at app startup. Optional — sensible defaults work.
 
 ```typescript
-import { init } from '@consoleag/console-agent';
+import { init } from '@console-agent/agent';
 
 init({
   apiKey: 'your-key',              // Or use GEMINI_API_KEY env var
@@ -675,7 +675,7 @@ init({ dryRun: true });
 Full TypeScript support with exported types:
 
 ```typescript
-import type { AgentResult, AgentConfig, AgentCallOptions, PersonaName, ToolCall } from '@consoleag/console-agent';
+import type { AgentResult, AgentConfig, AgentCallOptions, PersonaName, ToolCall } from '@console-agent/agent';
 ```
 
 The package ships with `.d.ts` and `.d.cts` declaration files for both ESM and CJS.

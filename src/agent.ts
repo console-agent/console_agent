@@ -110,7 +110,26 @@ export async function executeAgent(
   let contextStr = '';
   if (context !== undefined) {
     const processed = config.anonymize ? anonymizeValue(context) : context;
-    contextStr = typeof processed === 'string' ? processed : JSON.stringify(processed, null, 2);
+    contextStr = typeof processed === 'string'
+      ? processed
+      : JSON.stringify(processed, null, 2);
+
+    // Handle Error objects: JSON.stringify(Error) returns "{}" because
+    // message/stack/name are non-enumerable. Extract them explicitly.
+    if (context instanceof Error) {
+      const errObj = {
+        name: context.name,
+        message: context.message,
+        stack: context.stack,
+        ...(typeof context === 'object' ? Object.getOwnPropertyNames(context).reduce((acc, key) => {
+          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+          (acc as any)[key] = (context as any)[key];
+          return acc;
+        }, {} as Record<string, unknown>) : {}),
+      };
+      const processed2 = config.anonymize ? anonymizeValue(errObj) : errObj;
+      contextStr = typeof processed2 === 'string' ? processed2 : JSON.stringify(processed2, null, 2);
+    }
   }
 
   // Anonymize prompt if enabled
