@@ -5,7 +5,7 @@
  */
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
-import { ToolLoopAgent } from 'ai';
+import { ToolLoopAgent, Output } from 'ai';
 import * as z from 'zod';
 import type { AgentConfig, AgentCallOptions, AgentResult, PersonaDefinition, ToolCall } from '../types.js';
 import { logDebug } from '../utils/format.js';
@@ -42,8 +42,10 @@ export async function callGoogle(
   });
 
   // Build provider options (Google built-in tools + thinking)
-  const providerOptions: Record<string, unknown> = {};
-  const googleOpts: Record<string, unknown> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const providerOptions: Record<string, any> = {};
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const googleOpts: Record<string, any> = {};
 
   // Add built-in tools if not in localOnly mode
   if (!config.localOnly) {
@@ -90,9 +92,7 @@ export async function callGoogle(
     model: google(modelName),
     instructions: persona.systemPrompt,
     maxOutputTokens: config.budget.maxTokensPerCall,
-    output: {
-      schema: agentOutputSchema,
-    },
+    output: Output.object({ schema: agentOutputSchema }),
     providerOptions: Object.keys(providerOptions).length > 0 ? providerOptions : undefined,
     onStepFinish: (step) => {
       // Collect tool calls from each step
@@ -100,8 +100,8 @@ export async function callGoogle(
         for (const tc of step.toolCalls) {
           collectedToolCalls.push({
             name: tc.toolName,
-            args: tc.args as Record<string, unknown>,
-            result: tc.toolName, // store tool name as action
+            args: (tc as any).args ?? {},
+            result: tc.toolName,
           });
         }
       }
