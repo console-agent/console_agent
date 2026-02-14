@@ -1,6 +1,6 @@
 {
   "name": "@console-agent/agent",
-  "version": "1.1.1",
+  "version": "1.2.0",
   "description": "Drop console.agent(...) anywhere in your code to execute agentic workflows — as easy as console.log()",
   "license": "MIT",
   "author": "Pavel",
