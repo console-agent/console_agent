@@ -225,6 +225,73 @@ describeE2E('E2E: Custom Structured Output (schema & responseFormat)', () => {
   });
 });
 
+describeE2E('E2E: Tools — opt-in only, actually passed to API', () => {
+  beforeAll(() => {
+    updateConfig({
+      apiKey: API_KEY,
+      model: 'gemini-2.5-flash-lite',
+      mode: 'blocking',
+      logLevel: 'info',
+      anonymize: false,
+      timeout: 30000, // tools need more time
+    });
+  });
+
+  it('google_search tool — search grounding returns results', { timeout: 60000 }, async () => {
+    const result = await executeAgent(
+      'What is the current population of Tokyo? Use search to find the latest data.',
+      undefined,
+      { tools: ['google_search'] },
+    );
+
+    expectValidResult(result);
+    expect(result.success).toBe(true);
+    // The response should reference Tokyo population
+    const fullText = JSON.stringify(result).toLowerCase();
+    expect(fullText.includes('tokyo') || fullText.includes('population')).toBe(true);
+    console.log('Google Search result:', JSON.stringify(result, null, 2));
+  });
+
+  it('code_execution tool — runs code and returns result', { timeout: 60000 }, async () => {
+    const result = await executeAgent(
+      'Use code execution to calculate the 20th Fibonacci number',
+      undefined,
+      { tools: ['code_execution'] },
+    );
+
+    expectValidResult(result);
+    expect(result.success).toBe(true);
+    // The 20th Fibonacci number is 6765
+    const fullText = JSON.stringify(result);
+    expect(fullText.includes('6765')).toBe(true);
+    console.log('Code Execution result:', JSON.stringify(result, null, 2));
+  });
+
+  it('no tools by default — toolCalls should be empty', async () => {
+    const result = await executeAgent(
+      'What is 2 + 2? Answer concisely.',
+    );
+
+    expectValidResult(result);
+    expect(result.success).toBe(true);
+    // No tools were requested, so toolCalls should be empty
+    expect(result.metadata.toolCalls).toEqual([]);
+    console.log('No tools result:', JSON.stringify(result, null, 2));
+  });
+
+  it('multiple tools — google_search + code_execution', { timeout: 60000 }, async () => {
+    const result = await executeAgent(
+      'Search for the current world population, then use code execution to calculate what 1% of that number is',
+      undefined,
+      { tools: ['google_search', 'code_execution'] },
+    );
+
+    expectValidResult(result);
+    expect(result.success).toBe(true);
+    console.log('Multi-tool result:', JSON.stringify(result, null, 2));
+  });
+});
+
 describeE2E('E2E: Gemini 3 Flash Preview (high thinking)', () => {
   beforeAll(() => {
     updateConfig({

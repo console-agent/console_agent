@@ -44,7 +44,7 @@ export interface PersonaDefinition {
 
 // ─── Tool Types ──────────────────────────────────────────────────────────────
 
-export type ToolName = 'code_execution' | 'google_search' | 'file_analysis';
+export type ToolName = 'code_execution' | 'google_search' | 'url_context' | 'file_analysis';
 
 export interface GoogleSearchConfig {
   mode?: 'MODE_DYNAMIC' | 'MODE_UNSPECIFIED';
