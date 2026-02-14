@@ -120,6 +120,11 @@ export interface AgentCallOptions {
   /** Override execution mode */
   mode?: 'fire-and-forget' | 'blocking';
   /**
+   * Show full execution trace ([AGENT] prefix, tools, reasoning, metadata).
+   * When false (default), only the clean answer/summary is printed.
+   */
+  verbose?: boolean;
+  /**
    * Zod schema for typed structured output.
    * When provided, the AI returns data matching this schema.
    * The result is placed in `AgentResult.data`.
@@ -162,6 +167,11 @@ export interface AgentConfig {
   dryRun: boolean;
   /** Console log level */
   logLevel: LogLevel;
+  /**
+   * Show full execution trace ([AGENT] prefix, tools, reasoning, metadata).
+   * When false (default), only the clean answer/summary is printed.
+   */
+  verbose: boolean;
   /** Safety settings */
   safetySettings: SafetySetting[];
 }

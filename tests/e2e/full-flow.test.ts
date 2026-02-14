@@ -31,6 +31,7 @@ describeE2E('Full User Flow — init() + console.agent()', () => {
       model: 'gemini-2.5-flash-lite',
       mode: 'blocking',
       logLevel: 'info',
+      verbose: true,
       budget: {
         maxCallsPerDay: 50,
         maxTokensPerCall: 4000,

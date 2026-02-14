@@ -50,6 +50,7 @@ describeE2E('E2E: Real Gemini API calls', () => {
       model: 'gemini-2.5-flash-lite',
       mode: 'blocking',
       logLevel: 'info',
+      verbose: true,
       anonymize: false, // Don't strip test data
       timeout: 25000,
     });
@@ -154,6 +155,7 @@ describeE2E('E2E: Custom Structured Output (schema & responseFormat)', () => {
       model: 'gemini-2.5-flash-lite',
       mode: 'blocking',
       logLevel: 'info',
+      verbose: true,
       anonymize: false,
       timeout: 25000,
     });
@@ -232,6 +234,7 @@ describeE2E('E2E: Tools — opt-in only, actually passed to API', () => {
       model: 'gemini-2.5-flash-lite',
       mode: 'blocking',
       logLevel: 'info',
+      verbose: true,
       anonymize: false,
       timeout: 30000, // tools need more time
     });
@@ -299,6 +302,7 @@ describeE2E('E2E: Gemini 3 Flash Preview (high thinking)', () => {
       model: 'gemini-3-flash-preview',
       mode: 'blocking',
       logLevel: 'info',
+      verbose: true,
       anonymize: false,
       timeout: 25000,
     });

@@ -37,6 +37,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   localOnly: false,
   dryRun: false,
   logLevel: 'info',
+  verbose: false,
   safetySettings: [],
 };
 
@@ -85,24 +86,27 @@ export async function executeAgent(
     ? getPersona(options.persona)
     : detectPersona(prompt, personaName);
 
+  // Resolve verbose flag: per-call override > global config
+  const verbose = options?.verbose ?? config.verbose;
+
   logDebug(`Selected persona: ${persona.name} (${persona.icon})`);
 
   // Dry run — log without calling API
   if (config.dryRun) {
-    formatDryRun(prompt, persona, context);
+    formatDryRun(prompt, persona, context, verbose);
     return createDryRunResult(persona.name);
   }
 
   // Check rate limits
   if (!rateLimiter.tryConsume()) {
-    formatRateLimitWarning();
+    formatRateLimitWarning(verbose);
     return createErrorResult('Rate limited — too many calls. Try again later.');
   }
 
   // Check budget
   const budgetCheck = budgetTracker.canMakeCall();
   if (!budgetCheck.allowed) {
-    formatBudgetWarning(budgetCheck.reason!);
+    formatBudgetWarning(budgetCheck.reason!, verbose);
     return createErrorResult(budgetCheck.reason!);
   }
 
@@ -137,8 +141,8 @@ export async function executeAgent(
     ? (anonymizeValue(prompt) as string)
     : prompt;
 
-  // Start spinner
-  const spinner = startSpinner(persona, processedPrompt);
+  // Start spinner (only in verbose mode)
+  const spinner = startSpinner(persona, processedPrompt, verbose);
 
   try {
     // Execute with timeout
@@ -155,13 +159,13 @@ export async function executeAgent(
 
     // Stop spinner and format output
     stopSpinner(spinner, result.success);
-    formatResult(result, persona);
+    formatResult(result, persona, verbose);
 
     return result;
   } catch (error) {
     stopSpinner(spinner, false);
     const err = error instanceof Error ? error : new Error(String(error));
-    formatError(err, persona);
+    formatError(err, persona, verbose);
     return createErrorResult(err.message);
   }
 }

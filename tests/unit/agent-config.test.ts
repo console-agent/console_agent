@@ -18,6 +18,7 @@ describe('Agent Config', () => {
     expect(config.localOnly).toBe(false);
     expect(config.dryRun).toBe(false);
     expect(config.logLevel).toBe('info');
+    expect(config.verbose).toBe(false);
   });
 
   it('has default budget', () => {
