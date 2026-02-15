@@ -3,7 +3,7 @@
  * anonymization, provider calls, and console output.
  */
 
-import type { AgentConfig, AgentCallOptions, AgentResult, PersonaName, FileAttachment } from './types.js';
+import type { AgentConfig, AgentCallOptions, AgentResult, PersonaName } from './types.js';
 import { detectPersona, getPersona } from './personas/index.js';
 import { callGoogle } from './providers/google.js';
 import { anonymizeValue } from './utils/anonymize.js';
@@ -12,7 +12,6 @@ import { BudgetTracker } from './utils/budget.js';
 import {
   getCallerFile,
   getErrorSourceFile,
-  formatSourceForContext,
   type SourceFileInfo,
 } from './utils/caller-file.js';
 import {
