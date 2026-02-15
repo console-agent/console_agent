@@ -12,6 +12,9 @@ jobs:
   publish:
     name: Build & Publish to npm
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      id-token: write  # ← Make sure this is at JOB level
 
     steps:
       - name: Checkout code
