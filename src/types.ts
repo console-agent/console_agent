@@ -97,6 +97,17 @@ export interface BudgetConfig {
   costCapDaily: number;
 }
 
+// ─── File Attachment ─────────────────────────────────────────────────────────
+
+export interface FileAttachment {
+  /** File content as Buffer or Uint8Array */
+  data: Buffer | Uint8Array;
+  /** MIME type (e.g., 'application/pdf', 'image/png', 'text/plain') */
+  mediaType: string;
+  /** Optional filename for display in context */
+  fileName?: string;
+}
+
 // ─── Response Format (plain JSON Schema) ─────────────────────────────────────
 
 export interface ResponseFormat {
@@ -138,6 +149,18 @@ export interface AgentCallOptions {
    * The result is placed in `AgentResult.data`.
    */
   responseFormat?: ResponseFormat;
+  /**
+   * Auto-include the caller's source file as context for the AI.
+   * When true, reads the file where console.agent() was called (or where
+   * the Error originated) and sends it as part of the message.
+   * Per-call override of global config. Default: true.
+   */
+  includeCallerSource?: boolean;
+  /**
+   * Explicit file attachments to send to the AI (PDFs, images, etc.).
+   * These are sent as multipart message content alongside the prompt.
+   */
+  files?: FileAttachment[];
 }
 
 // ─── Global Config ───────────────────────────────────────────────────────────
@@ -174,6 +197,13 @@ export interface AgentConfig {
   verbose: boolean;
   /** Safety settings */
   safetySettings: SafetySetting[];
+  /**
+   * Auto-include the caller's source file as context for the AI.
+   * When true (default), reads the file where console.agent() was called
+   * (or where an Error originated) and sends it alongside the prompt.
+   * Set to false via init() to disable globally.
+   */
+  includeCallerSource: boolean;
 }
 
 // ─── console.agent callable interface ────────────────────────────────────────

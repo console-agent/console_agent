@@ -10,8 +10,10 @@
 
 import { createGoogleGenerativeAI } from '@ai-sdk/google';
 import { ToolLoopAgent, Output, jsonSchema, generateText, stepCountIs, type ToolSet } from 'ai';
-import type { AgentConfig, AgentCallOptions, AgentResult, PersonaDefinition, ToolCall } from '../types.js';
+import type { AgentConfig, AgentCallOptions, AgentResult, PersonaDefinition, ToolCall, FileAttachment } from '../types.js';
 import { resolveTools, hasExplicitTools, TOOLS_MIN_TIMEOUT } from '../tools/index.js';
+import { prepareFileContent } from '../tools/file-analysis.js';
+import { formatSourceForContext, type SourceFileInfo } from '../utils/caller-file.js';
 import { logDebug } from '../utils/format.js';
 import { z } from 'zod';
 
@@ -46,6 +48,51 @@ IMPORTANT: You MUST respond with ONLY a valid JSON object (no markdown, no code 
 Use this exact format:
 {"success": true, "summary": "one-line conclusion", "reasoning": "your thought process", "data": {"result": "primary finding"}, "actions": ["tools/steps used"], "confidence": 0.95}`;
 
+// ─── Message Builder ─────────────────────────────────────────────────────────
+
+/**
+ * Build a multipart messages array for the AI SDK.
+ * Combines prompt text, context, auto-detected source file, and explicit file attachments.
+ */
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+function buildMessages(
+  prompt: string,
+  context: string,
+  sourceFile?: SourceFileInfo | null,
+  files?: FileAttachment[],
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+): any[] {
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const parts: any[] = [];
+
+  // 1. User's prompt text
+  parts.push({ type: 'text', text: prompt });
+
+  // 2. Stringified context (error details, objects, etc.)
+  if (context) {
+    parts.push({ type: 'text', text: `\n--- Context ---\n${context}` });
+  }
+
+  // 3. Auto-detected source file (from error stack or caller file)
+  if (sourceFile) {
+    const formatted = formatSourceForContext(sourceFile);
+    parts.push({ type: 'text', text: `\n${formatted}` });
+  }
+
+  // 4. Explicit file attachments (PDFs, images, etc.)
+  if (files && files.length > 0) {
+    for (const file of files) {
+      const prepared = prepareFileContent(file.data, file.mediaType);
+      if (file.fileName) {
+        parts.push({ type: 'text', text: `\n--- Attached File: ${file.fileName} ---` });
+      }
+      parts.push(prepared);
+    }
+  }
+
+  return [{ role: 'user' as const, content: parts }];
+}
+
 // ─── Provider ────────────────────────────────────────────────────────────────
 
 export async function callGoogle(
@@ -54,6 +101,8 @@ export async function callGoogle(
   persona: PersonaDefinition,
   config: AgentConfig,
   options?: AgentCallOptions,
+  sourceFile?: SourceFileInfo | null,
+  files?: FileAttachment[],
 ): Promise<AgentResult> {
   const startTime = Date.now();
   const modelName = options?.model ?? config.model;
@@ -90,11 +139,11 @@ export async function callGoogle(
 
   if (useTools) {
     logDebug('Tools requested — using generateText path (no structured output)');
-    return callWithTools(prompt, context, persona, config, options!, google, modelName, startTime, providerOptions);
+    return callWithTools(prompt, context, persona, config, options!, google, modelName, startTime, providerOptions, sourceFile, files);
   }
 
   logDebug('No tools — using ToolLoopAgent with structured output');
-  return callWithStructuredOutput(prompt, context, persona, config, options, google, modelName, startTime, providerOptions);
+  return callWithStructuredOutput(prompt, context, persona, config, options, google, modelName, startTime, providerOptions, sourceFile, files);
 }
 
 // ─── Path 1: WITH TOOLS (generateText, no structured output) ────────────────
@@ -111,6 +160,8 @@ async function callWithTools(
   startTime: number,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   providerOptions: Record<string, any>,
+  sourceFile?: SourceFileInfo | null,
+  files?: FileAttachment[],
 ): Promise<AgentResult> {
   const resolvedTools = resolveTools(options.tools!, google);
   const toolNames = Object.keys(resolvedTools);
@@ -118,10 +169,8 @@ async function callWithTools(
 
   const effectiveTimeout = Math.max(config.timeout, TOOLS_MIN_TIMEOUT);
 
-  // Build user message
-  const userMessage = context
-    ? `${prompt}\n\n--- Context ---\n${context}`
-    : prompt;
+  // Build multipart messages (supports source files + file attachments)
+  const messages = buildMessages(prompt, context, sourceFile, files);
 
   // Use generateText with provider tools
   // Provider tools (google_search, code_execution, url_context) run server-side
@@ -129,7 +178,7 @@ async function callWithTools(
   const result = await generateText({
     model: google(modelName),
     system: persona.systemPrompt + JSON_RESPONSE_INSTRUCTION,
-    prompt: userMessage,
+    messages,
     tools: resolvedTools as ToolSet,
     stopWhen: stepCountIs(5), // Allow multi-step: tool invocation → response
     maxOutputTokens: config.budget.maxTokensPerCall,
@@ -195,10 +244,11 @@ async function callWithStructuredOutput(
   startTime: number,
   // eslint-disable-next-line @typescript-eslint/no-explicit-any
   providerOptions: Record<string, any>,
+  sourceFile?: SourceFileInfo | null,
+  files?: FileAttachment[],
 ): Promise<AgentResult> {
-  const userMessage = context
-    ? `${prompt}\n\n--- Context ---\n${context}`
-    : prompt;
+  // Build multipart messages (supports source files + file attachments)
+  const messages = buildMessages(prompt, context, sourceFile, files);
 
   const collectedToolCalls: ToolCall[] = [];
 
@@ -244,7 +294,7 @@ async function callWithStructuredOutput(
   });
 
   const result = await agent.generate({
-    prompt: userMessage,
+    messages,
     timeout: config.timeout,
   });
 

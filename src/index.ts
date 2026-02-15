@@ -47,6 +47,7 @@ export type {
   HarmCategory,
   HarmBlockThreshold,
   LogLevel,
+  FileAttachment,
   GoogleSearchConfig,
 } from './types.js';
 

@@ -8,6 +8,8 @@
 - [Tools](#tools)
 - [Configuration](#configuration)
 - [Budget & Rate Limiting](#budget--rate-limiting)
+- [Caller Source Detection](#caller-source-detection)
+- [File Attachments](#file-attachments)
 - [Privacy & Anonymization](#privacy--anonymization)
 - [Thinking Mode](#thinking-mode)
 - [Console Output](#console-output)
@@ -422,6 +424,137 @@ init({
 
 At the default budget (100 calls/day, 8K tokens/call):
 - **Estimated max daily cost:** ~$0.03 with flash-lite
+
+---
+
+## Caller Source Detection
+
+When debugging, the agent **automatically reads the source file** where `console.agent()` was called (or where an Error originated) and sends it as context to the AI model. This gives the agent full visibility into your code without you having to copy-paste anything.
+
+### How It Works
+
+1. **Error path**: When you pass an `Error` as context, the agent parses the stack trace to find the originating file, reads it, and sends the source code with line numbers (arrow marking the error line).
+2. **Caller path**: Even without an error, the agent detects which file called `console.agent()` and includes that file's source.
+
+### Example — Automatic Error Source Detection
+
+```typescript
+// billing.ts
+function calculateInvoice(user: User) {
+  const total = user.plan.seats * user.plan.pricePerSeat; // BUG: plan can be undefined!
+  return { userId: user.id, amount: total };
+}
+
+try {
+  calculateInvoice(freeUser);
+} catch (error) {
+  // Agent auto-reads billing.ts from the error stack trace
+  // and sends the full file with line numbers to Gemini
+  console.agent.debug("analyze this billing error", error);
+}
+```
+
+The agent sees:
+```
+--- Source File: billing.ts (line 3) ---
+      1 | function calculateInvoice(user: User) {
+      2 |   // BUG: plan can be undefined!
+ →    3 |   const total = user.plan.seats * user.plan.pricePerSeat;
+      4 |   return { userId: user.id, amount: total };
+      5 | }
+```
+
+### Configuration
+
+```typescript
+// Enabled by default
+init({ includeCallerSource: true });
+
+// Disable globally
+init({ includeCallerSource: false });
+
+// Disable per-call
+console.agent("analyze", data, { includeCallerSource: false });
+```
+
+### Limits
+
+- Files larger than **100KB** are truncated to prevent excessive token usage
+- Only `.ts`, `.js`, `.tsx`, `.jsx`, `.mjs`, `.cjs` source files are read
+- Internal frames (node_modules, node internals) are skipped automatically
+
+---
+
+## File Attachments
+
+You can explicitly attach files (PDFs, images, etc.) to any agent call using the `files` option:
+
+```typescript
+import { readFileSync } from 'fs';
+
+// Attach a PDF document
+const result = await console.agent(
+  "What is an embedding model according to this document?",
+  undefined,
+  {
+    files: [
+      {
+        data: readFileSync('./data/ai.pdf'),
+        mediaType: 'application/pdf',
+        fileName: 'ai.pdf',
+      },
+    ],
+  }
+);
+
+// Attach an image
+const result2 = await console.agent(
+  "Describe what's in this screenshot",
+  undefined,
+  {
+    files: [
+      {
+        data: readFileSync('./screenshot.png'),
+        mediaType: 'image/png',
+        fileName: 'screenshot.png',
+      },
+    ],
+  }
+);
+
+// Multiple files at once
+const result3 = await console.agent(
+  "Compare these two documents",
+  undefined,
+  {
+    files: [
+      { data: readFileSync('./doc1.pdf'), mediaType: 'application/pdf', fileName: 'doc1.pdf' },
+      { data: readFileSync('./doc2.pdf'), mediaType: 'application/pdf', fileName: 'doc2.pdf' },
+    ],
+  }
+);
+```
+
+### Supported Media Types
+
+| Type | Media Type |
+|------|-----------|
+| PDF | `application/pdf` |
+| PNG | `image/png` |
+| JPEG | `image/jpeg` |
+| WebP | `image/webp` |
+| GIF | `image/gif` |
+| Plain text | `text/plain` |
+
+### FileAttachment Interface
+
+```typescript
+interface FileAttachment {
+  data: Buffer | Uint8Array | string;  // File content (Buffer, base64 string, etc.)
+  mediaType: string;                    // MIME type
+  fileName?: string;                    // Optional name for context
+}
+```
 
 ---
 

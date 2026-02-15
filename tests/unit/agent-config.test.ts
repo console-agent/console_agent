@@ -19,6 +19,7 @@ describe('Agent Config', () => {
     expect(config.dryRun).toBe(false);
     expect(config.logLevel).toBe('info');
     expect(config.verbose).toBe(false);
+    expect(config.includeCallerSource).toBe(true);
   });
 
   it('has default budget', () => {

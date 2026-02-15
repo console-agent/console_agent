@@ -3,12 +3,18 @@
  * anonymization, provider calls, and console output.
  */
 
-import type { AgentConfig, AgentCallOptions, AgentResult, PersonaName } from './types.js';
+import type { AgentConfig, AgentCallOptions, AgentResult, PersonaName, FileAttachment } from './types.js';
 import { detectPersona, getPersona } from './personas/index.js';
 import { callGoogle } from './providers/google.js';
 import { anonymizeValue } from './utils/anonymize.js';
 import { RateLimiter } from './utils/rate-limit.js';
 import { BudgetTracker } from './utils/budget.js';
+import {
+  getCallerFile,
+  getErrorSourceFile,
+  formatSourceForContext,
+  type SourceFileInfo,
+} from './utils/caller-file.js';
 import {
   startSpinner,
   stopSpinner,
@@ -39,6 +45,7 @@ export const DEFAULT_CONFIG: AgentConfig = {
   logLevel: 'info',
   verbose: false,
   safetySettings: [],
+  includeCallerSource: true,
 };
 
 // ─── Singleton State ─────────────────────────────────────────────────────────
@@ -141,13 +148,38 @@ export async function executeAgent(
     ? (anonymizeValue(prompt) as string)
     : prompt;
 
+  // ─── Auto-detect caller source file ──────────────────────────────────────
+  const shouldIncludeSource = options?.includeCallerSource ?? config.includeCallerSource;
+  let sourceFile: SourceFileInfo | null = null;
+
+  if (shouldIncludeSource) {
+    // Priority 1: If context is an Error, get the file where the error originated
+    if (context instanceof Error) {
+      sourceFile = getErrorSourceFile(context);
+      if (sourceFile) {
+        logDebug(`Auto-detected error source file: ${sourceFile.fileName} (line ${sourceFile.line})`);
+      }
+    }
+
+    // Priority 2: If no error source, get the caller file (where console.agent was called)
+    if (!sourceFile) {
+      sourceFile = getCallerFile();
+      if (sourceFile) {
+        logDebug(`Auto-detected caller file: ${sourceFile.fileName} (line ${sourceFile.line})`);
+      }
+    }
+  }
+
+  // Collect explicit file attachments
+  const files = options?.files;
+
   // Start spinner (only in verbose mode)
   const spinner = startSpinner(persona, processedPrompt, verbose);
 
   try {
     // Execute with timeout
     const result = await Promise.race([
-      callGoogle(processedPrompt, contextStr, persona, config, options),
+      callGoogle(processedPrompt, contextStr, persona, config, options, sourceFile, files),
       createTimeout(config.timeout),
     ]);
 
