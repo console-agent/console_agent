@@ -48,6 +48,25 @@ const INTERNAL_PATTERNS = [
   '<anonymous>',
 ];
 
+// ─── File Path Normalization ─────────────────────────────────────────────────
+
+/**
+ * Normalize a file path from a stack trace.
+ * ESM modules (.mjs) use file:// URLs in stack traces (e.g., file:///Users/...)
+ * which must be converted to filesystem paths before they can be read.
+ */
+function normalizeFilePath(filePath: string): string {
+  if (filePath.startsWith('file://')) {
+    try {
+      return new URL(filePath).pathname;
+    } catch {
+      // Fallback: strip file:// manually
+      return filePath.replace(/^file:\/\//, '');
+    }
+  }
+  return filePath;
+}
+
 // ─── Stack Trace Parsing ─────────────────────────────────────────────────────
 
 /**
@@ -148,7 +167,8 @@ export function getErrorSourceFile(error: Error): SourceFileInfo | null {
  */
 function readSourceFile(filePath: string, line: number, column: number): SourceFileInfo | null {
   try {
-    const resolvedPath = resolve(filePath);
+    const normalizedPath = normalizeFilePath(filePath);
+    const resolvedPath = resolve(normalizedPath);
 
     if (!existsSync(resolvedPath)) return null;
 

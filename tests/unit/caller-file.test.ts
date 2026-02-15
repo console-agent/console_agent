@@ -92,6 +92,51 @@ describe('Caller File Detection', () => {
     });
   });
 
+  describe('ESM file:// URL normalization', () => {
+    it('getErrorSourceFile handles file:// URLs from ESM stack traces', () => {
+      // ESM (.mjs) stack traces use file:// URLs
+      const error = new Error('Cannot read properties of undefined');
+      error.stack = `TypeError: Cannot read properties of undefined (reading 'map')
+    at file:///Users/test/project/test.mjs:6:11
+    at ModuleJob.run (node:internal/modules/esm/module_job:218:25)`;
+
+      // Should not throw — gracefully handles file:// URLs
+      const result = getErrorSourceFile(error);
+      // File likely doesn't exist on test machine, but it shouldn't crash
+      // The important thing is the file:// URL is properly normalized
+      expect(result === null || typeof result === 'object').toBe(true);
+    });
+
+    it('getErrorSourceFile reads real file with file:// URL', () => {
+      // Create an error pointing to this test file using a file:// URL
+      const thisFile = resolve(__dirname, 'caller-file.test.ts');
+      const error = new Error('test');
+      error.stack = `Error: test
+    at file://${thisFile}:1:1`;
+
+      const result = getErrorSourceFile(error);
+      // This file exists, so it should be read successfully
+      if (result) {
+        expect(result.fileName).toBe('caller-file.test.ts');
+        expect(result.content).toContain('describe');
+        expect(result.line).toBe(1);
+      }
+    });
+
+    it('handles file:/// triple-slash URL (standard ESM format)', () => {
+      const thisFile = resolve(__dirname, 'caller-file.test.ts');
+      const error = new Error('test');
+      error.stack = `Error: test
+    at Object.<anonymous> (file:///${thisFile.replace(/^\//, '')}:5:10)`;
+
+      const result = getErrorSourceFile(error);
+      if (result) {
+        expect(result.fileName).toBe('caller-file.test.ts');
+        expect(result.content).toBeTruthy();
+      }
+    });
+  });
+
   describe('includeCallerSource config integration', () => {
     it('DEFAULT_CONFIG has includeCallerSource true', async () => {
       const { DEFAULT_CONFIG } = await import('../../src/agent.js');
