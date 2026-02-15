@@ -1,41 +1,34 @@
 # Active Context
 
 ## Current Focus
-v1.0.0 is feature-complete, tested, and packaged. Ready for npm publish.
+v1.2.2 is published on npm. Landing page and API reference page are live at console-agent.github.io.
 
-## Recent Changes (2026-02-13)
-- **Fixed Gemini schema error**: `response_schema.properties["data"].properties: should be non-empty for OBJECT type` — added `result` property inside `data` schema object
-- **Rewrote provider to use ToolLoopAgent**: Replaced `generateText()` with proper `ToolLoopAgent` pattern from Vercel AI SDK for multi-step reasoning
-- **Fixed thinking mode**: `providerOptions: { google: { thinkingConfig: { ... } } }` instead of incorrect nesting
-- **Fixed Gemini tool+JSON incompatibility**: Built-in tools (code_execution, google_search) are incompatible with structured JSON output — logged but not sent to API
-- **Fixed token counting**: Using `result.usage.totalTokens` from ToolLoopAgent
-- **Fixed Error serialization**: `JSON.stringify(new Error())` returns `"{}"` — now extracts name/message/stack explicitly
-- **Fixed bun shell config**: Added bun PATH to `~/.zshrc` (was only in `~/.bashrc`)
-- **Test assertion fixes**: Security/debug personas correctly return `success: false` when finding issues
+## Recent Changes (2026-02-15)
+- **Version bump to 1.2.2**: Both TS and Python packages bumped
+- **Landing page updates**: Added "Reference" nav link, updated Full Config section with `includeCallerSource` and File Attachments examples
+- **API Reference page**: Created `reference.html` + `reference.css` — fetches docs.md from both JS and Python repos, renders with marked.js + Prism.js syntax highlighting, sticky sidebar TOC with scroll-spy
+- **Dynamic GitHub link**: Nav GitHub icon switches between JS repo and Python repo based on JS/PY toggle
+- **Fixed marked.js v12 compatibility**: Custom renderer functions updated to handle token-based API (heading, code, table)
 
 ## Current Phase
-Post-v1.0 — package is built, tested (58 total tests passing), and validated in external project.
+Post-v1.2.2 — Both JS and Python packages published. Website with full API reference live.
 
 ## What's Working
-- All 44 unit/integration tests pass
-- All 14 E2E tests pass (real Gemini API calls)
-- Package builds to ESM + CJS + DTS
-- External test project works (`test-console-agent/code.js` + `code2.js`)
-- Blocking mode: `await console.agent()` returns AgentResult
-- Fire-and-forget mode: `console.agent()` runs in background
-- All personas: general, security, debugger, architect
-- Thinking mode with gemini-3-flash-preview
-- Error objects correctly serialized as context
+- All unit/integration/E2E tests pass (both JS and Python)
+- npm package: `@console-agent/agent@1.2.2`
+- PyPI package: `console-agent==1.2.2`
+- Landing page: console-agent.github.io with JS/PY toggle
+- Reference page: console-agent.github.io/reference.html with live docs
+- GitHub Actions CI/CD for both npm and PyPI
+- All features: personas, tools, budget, rate limiting, anonymization, caller source detection, file attachments, thinking mode, structured output
 
 ## What's Next
-1. Publish to npm (`npm publish --access public`)
-2. Consider adding tool support when Gemini lifts JSON+tools restriction
-3. Add caching layer for repeated prompts
-4. Add streaming support (v2.0)
+1. Add caching layer for repeated prompts
+2. Add streaming support (v2.0)
+3. Explore more personas (performance, testing, etc.)
+4. Consider adding tool support when Gemini lifts JSON+tools restriction
 
-## Key Files Modified in This Session
-- `src/providers/google.ts` — Rewrote to use ToolLoopAgent, fixed schema, thinking, token counting
-- `src/agent.ts` — Added Error object serialization
-- `tests/e2e/agent-real.test.ts` — Fixed success assertions for security/debug personas
-- `tests/e2e/full-flow.test.ts` — Fixed success assertions for security/debug personas
-- `~/.zshrc` — Added bun PATH
+## Key Repos
+- **JS/TS**: github.com/console-agent/console_agent (npm: @console-agent/agent)
+- **Python**: github.com/console-agent/console_agent_python (PyPI: console-agent)
+- **Website**: github.com/console-agent/console-agent.github.io

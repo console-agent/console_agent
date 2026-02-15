@@ -19,6 +19,16 @@
 - [x] External test project validated (test-console-agent/code.js + code2.js)
 - [x] Error object serialization fix (JSON.stringify(Error) → extract name/message/stack)
 - [x] Shell config fix (bun PATH added to ~/.zshrc)
+- [x] v1.1.0 — Verbose/quiet console output modes
+- [x] v1.2.0 — Native Gemini tools (google_search, code_execution, url_context)
+- [x] v1.2.1 — Caller source file auto-detection (reads source file from stack trace)
+- [x] v1.2.1 — File attachments support (PDF, images via Agno File)
+- [x] v1.2.1 — CI/CD pipeline (GitHub Actions → npm publish with provenance)
+- [x] v1.2.1 — Comprehensive docs.md for reference page
+- [x] v1.2.2 — Version bump (current)
+- [x] Landing page (console-agent.github.io) with JS/PY toggle
+- [x] Reference page (reference.html) fetching docs.md from GitHub with marked.js
+- [x] Dynamic GitHub nav link (switches JS↔Python repo based on toggle)
 
 ## Architecture Notes
 - Using `ToolLoopAgent` from Vercel AI SDK for multi-step reasoning + structured output
@@ -35,7 +45,7 @@
 - Model sometimes returns `success: false` for security audits and debug analysis (when it finds a vulnerability/bug), which is semantically correct but test assertions needed adjustment.
 
 ## Next Steps
-- Publish to npm
-- Add more E2E test coverage
-- Consider adding tool support when Gemini lifts the JSON+tools restriction
 - Add caching layer for repeated prompts
+- Consider adding tool support when Gemini lifts the JSON+tools restriction
+- Add streaming support (v2.0)
+- Explore more personas (performance, testing, etc.)

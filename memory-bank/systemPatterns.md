@@ -12,6 +12,8 @@ User calls console.agent()
          ↓
     Serialize context (handle Error objects, anonymize if enabled)
          ↓
+    Auto-detect caller source file (stack trace → read file → add to context)
+         ↓
   ┌──────┴──────┐
   │ Fire-forget │ Blocking mode
   ↓             ↓
@@ -33,7 +35,6 @@ Format + log to console ← Resolve Promise
 ## Key Design Patterns
 
 ### ToolLoopAgent Pattern (Vercel AI SDK)
-The provider uses `ToolLoopAgent` for multi-step reasoning:
 ```typescript
 const agent = new ToolLoopAgent({
   model: google(modelName),
@@ -46,7 +47,6 @@ const result = await agent.generate({ prompt, timeout });
 ```
 
 ### Proxy-Based Callable
-`console.agent` is a function with persona methods attached:
 ```typescript
 console.agent("prompt", data)           // Direct call
 console.agent.security("prompt", data)  // Persona method
@@ -61,6 +61,13 @@ export function init(config: Partial<AgentConfig>) {
   globalConfig = { ...defaults, ...config };
 }
 ```
+
+### Caller Source File Detection
+1. Parse Error stack trace → find originating file (skip internal frames)
+2. Normalize ESM `file://` URLs to filesystem paths
+3. Read source file (truncate at 100KB)
+4. Format with line numbers + arrow marker on error line
+5. Append to agent context for full code visibility
 
 ### Fire-and-Forget Pattern
 Default mode — call starts async execution, returns promise but caller doesn't await:
@@ -82,42 +89,17 @@ Keywords in prompt trigger persona overrides:
 - Default → general
 
 ### Structured Output via jsonSchema
-Gemini requires OBJECT types to have non-empty `properties`. Schema uses `jsonSchema()` from AI SDK:
 ```typescript
 Output.object({
   schema: jsonSchema({
     type: 'object',
     properties: {
       success: { type: 'boolean' },
-      data: {
-        type: 'object',
-        properties: { result: { type: 'string' } }, // MUST be non-empty
-        additionalProperties: true,
-      },
-      // ...
+      data: { type: 'object', properties: { result: { type: 'string' } }, additionalProperties: true },
     },
   }),
 });
 ```
-
-### Error Object Serialization
-`JSON.stringify(Error)` returns `"{}"`. Agent detects `instanceof Error` and extracts non-enumerable properties:
-```typescript
-if (context instanceof Error) {
-  const errObj = { name: context.name, message: context.message, stack: context.stack };
-  contextStr = JSON.stringify(errObj, null, 2);
-}
-```
-
-### Token Bucket Rate Limiting
-- Bucket fills at a steady rate (calls per day / 86400 per second)
-- Each call consumes one token
-- Rejects when bucket is empty
-
-### Budget Tracking
-- Track daily token usage and estimated cost
-- Hard cap prevents exceeding daily budget
-- Reset at midnight UTC
 
 ### Content Anonymization Pipeline
 Before sending to API:
@@ -126,12 +108,12 @@ Before sending to API:
 3. Replace IP addresses with `[IP]`
 4. Replace common secret patterns with `[REDACTED]`
 
-### Provider Options for Thinking
-Gemini thinking config must be at the correct nesting level:
-```typescript
-providerOptions: {
-  google: {
-    thinkingConfig: { thinkingBudget: 1024 }  // or { thinkingLevel: 'high' }
-  }
-}
-```
+### Token Bucket Rate Limiting
+- Bucket fills at steady rate (calls per day / 86400 per second)
+- Each call consumes one token
+- Rejects when bucket is empty
+
+### Budget Tracking
+- Track daily token usage and estimated cost
+- Hard cap prevents exceeding daily budget
+- Reset at midnight UTC

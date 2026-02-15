@@ -9,10 +9,11 @@
 - **Bundler:** tsup (dual ESM/CJS output)
 - **Testing:** vitest (44 unit/integration + 14 E2E tests)
 - **Console styling:** chalk v5 (ESM), ora v8 (spinners)
+- **CI/CD:** GitHub Actions → npm publish with provenance (Sigstore)
 
 ## Package Identity
 - **Name:** `@console-agent/agent`
-- **Version:** 1.0.0
+- **Version:** 1.2.2
 - **License:** MIT
 - **Node engines:** >=18.0.0
 
@@ -39,33 +40,41 @@
 | gemini-2.5-flash-lite | ~1-2s | Fast, cheap, general purpose | ✅ Yes |
 | gemini-3-flash-preview | ~7-10s | High thinking, complex reasoning | No |
 
+## Key Features (v1.2.x)
+- **Caller source detection**: Auto-reads source file where `console.agent()` was called or where an Error originated (via stack trace parsing + ESM file:// URL normalization)
+- **File attachments**: Pass files (PDF, images) via `files` option using Vercel AI SDK file handling
+- **Verbose/quiet modes**: `verbose: true` shows full [AGENT] tree with tool calls, reasoning, metadata
+- **Native Gemini tools**: google_search, code_execution, url_context (server-side, no local execution)
+- **Structured output**: Zod schemas or plain JSON Schema for typed responses
+- **Thinking mode**: Budget-based (Gemini 2.5) or level-based (Gemini 3)
+
 ## Structured Output Schema
 Gemini requires OBJECT types to have non-empty `properties`. The schema uses `jsonSchema()` from `ai` package:
 ```typescript
-const schema = jsonSchema({
-  type: 'object',
-  properties: {
-    success: { type: 'boolean' },
-    summary: { type: 'string' },
-    reasoning: { type: 'string' },
-    data: {
-      type: 'object',
-      properties: {
-        result: { type: 'string' }  // REQUIRED: non-empty properties for OBJECT type
+Output.object({
+  schema: jsonSchema({
+    type: 'object',
+    properties: {
+      success: { type: 'boolean' },
+      summary: { type: 'string' },
+      reasoning: { type: 'string' },
+      data: {
+        type: 'object',
+        properties: { result: { type: 'string' } },
+        additionalProperties: true,
       },
-      additionalProperties: true,
+      actions: { type: 'array', items: { type: 'string' } },
+      confidence: { type: 'number', minimum: 0, maximum: 1 },
     },
-    actions: { type: 'array', items: { type: 'string' } },
-    confidence: { type: 'number', minimum: 0, maximum: 1 },
-  },
-  required: ['success', 'summary', 'data', 'actions', 'confidence'],
+    required: ['success', 'summary', 'data', 'actions', 'confidence'],
+  }),
 });
 ```
 
 ## Critical Gemini API Limitations
 1. **Tools + JSON output incompatible**: Built-in tools (code_execution, google_search) cannot be used with `response_mime_type: application/json`. Using structured output means no built-in tools.
 2. **OBJECT schema requires non-empty properties**: Every `type: 'object'` must have at least one property defined.
-3. **Thinking config**: Must use `providerOptions: { google: { thinkingConfig: { thinkingBudget: N } } }` — NOT nested under `thinkingConfig` directly.
+3. **Thinking config**: Must use `providerOptions: { google: { thinkingConfig: { thinkingBudget: N } } }`.
 
 ## Build Outputs
 - `dist/index.js` — ESM (24KB)
@@ -76,3 +85,10 @@ const schema = jsonSchema({
 
 ## Error Object Handling
 `JSON.stringify(new Error("msg"))` returns `"{}"` because Error properties (message, stack, name) are non-enumerable. The agent explicitly extracts these via `Object.getOwnPropertyNames()` before serializing context.
+
+## Website (console-agent.github.io)
+- Static HTML/CSS/JS (no framework)
+- GSAP animations, Prism.js syntax highlighting
+- JS/PY toggle switches all code examples, terminal demos, GitHub link
+- Reference page uses marked.js v12 to render docs.md from GitHub raw URLs
+- Deployed via GitHub Pages
