@@ -1,5 +1,8 @@
-# @console-agent/agent
-
+```
+█▀▀ █▀█ █▄ █ █▀ █▀█ █   █▀▀
+█▄▄ █▄█ █ ▀█ ▄█ █▄█ █▄▄ ██▄
+       .agent
+```
 > Drop `console.agent(...)` anywhere in your code to execute agentic workflows — as easy as `console.log()`
 
 [![npm](https://img.shields.io/npm/v/@console-agent/agent)](https://www.npmjs.com/package/@console-agent/agent)
