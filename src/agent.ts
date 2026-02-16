@@ -6,6 +6,7 @@
 import type { AgentConfig, AgentCallOptions, AgentResult, PersonaName } from './types.js';
 import { detectPersona, getPersona } from './personas/index.js';
 import { callGoogle } from './providers/google.js';
+import { callOllama } from './providers/ollama.js';
 import { anonymizeValue } from './utils/anonymize.js';
 import { RateLimiter } from './utils/rate-limit.js';
 import { BudgetTracker } from './utils/budget.js';
@@ -30,6 +31,7 @@ import {
 export const DEFAULT_CONFIG: AgentConfig = {
   provider: 'google',
   model: 'gemini-2.5-flash-lite',
+  ollamaHost: 'http://localhost:11434',
   persona: 'general',
   budget: {
     maxCallsPerDay: 100,
@@ -177,8 +179,13 @@ export async function executeAgent(
 
   try {
     // Execute with timeout
+    // Route to the correct provider
+    const providerCall = config.provider === 'ollama'
+      ? callOllama(processedPrompt, contextStr, persona, config, options, sourceFile, files)
+      : callGoogle(processedPrompt, contextStr, persona, config, options, sourceFile, files);
+
     const result = await Promise.race([
-      callGoogle(processedPrompt, contextStr, persona, config, options, sourceFile, files),
+      providerCall,
       createTimeout(config.timeout),
     ]);
 

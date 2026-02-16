@@ -4,6 +4,7 @@
 - [Getting Started](#getting-started)
 - [How It Works](#how-it-works)
 - [API Reference](#api-reference)
+- [Providers](#providers)
 - [Personas](#personas)
 - [Tools](#tools)
 - [Configuration](#configuration)
@@ -231,6 +232,79 @@ const { risk, recommendation } = result.data;
 
 ---
 
+## Providers
+
+console.agent supports multiple AI providers. Choose based on your needs:
+
+### Google Gemini (default)
+
+Cloud-hosted models with full tool support. Requires a free API key.
+
+```typescript
+import { init } from '@console-agent/agent';
+
+init({
+  provider: 'google',                    // default
+  apiKey: process.env.GEMINI_API_KEY,
+  model: 'gemini-2.5-flash-lite',
+});
+```
+
+**Setup:**
+1. Get a free API key at [aistudio.google.com/apikey](https://aistudio.google.com/apikey)
+2. Set `GEMINI_API_KEY` env var or pass `apiKey` to `init()`
+
+**Supports:** ✅ Tools (google_search, code_execution, url_context) · ✅ Thinking mode · ✅ File attachments · ✅ Structured output
+
+### Ollama (Local Models)
+
+Run models locally with [Ollama](https://ollama.com). Free, 100% private, no API key needed.
+
+```bash
+# 1. Install Ollama: https://ollama.com
+# 2. Pull a model
+ollama pull llama3.2
+```
+
+```typescript
+import { init } from '@console-agent/agent';
+
+init({
+  provider: 'ollama',
+  model: 'llama3.2',                         // any model from `ollama list`
+  ollamaHost: 'http://localhost:11434',       // default Ollama host
+});
+```
+
+**Setup:**
+1. Install Ollama from [ollama.com](https://ollama.com)
+2. Pull a model: `ollama pull llama3.2`
+3. That's it — no API key needed
+
+**Supports:** ✅ All personas · ✅ Structured output · ⚠️ Text-only file attachments
+
+**Not supported:** ❌ Tools (google_search, code_execution, url_context) · ❌ Thinking mode
+
+The Ollama provider auto-defaults to `llama3.2` if the configured model is a Gemini model name. You can use any model available in your Ollama installation (`ollama list`).
+
+The host can also be set via the `OLLAMA_HOST` environment variable.
+
+### Provider Comparison
+
+| | Google Gemini | Ollama |
+|---|---|---|
+| Setup | `GEMINI_API_KEY` env var | Install Ollama + pull model |
+| Config | `provider: 'google'` | `provider: 'ollama'` |
+| Models | `gemini-2.5-flash-lite`, etc. | `llama3.2`, any `ollama list` model |
+| Tools | ✅ google_search, code_execution, url_context | ❌ Not supported |
+| Thinking | ✅ Supported | ❌ Not supported |
+| File attachments | ✅ Full support (PDF, images, video) | ⚠️ Text-only |
+| Cost | Pay per token (very cheap) | Free (local) |
+| Privacy | Cloud (with anonymization) | 100% local |
+| Speed | ~200ms (flash-lite) | Depends on hardware |
+
+---
+
 ## Personas
 
 ### Available Personas
@@ -323,9 +397,10 @@ init({ localOnly: true });
 
 ```typescript
 interface AgentConfig {
-  provider: 'google';              // Only Google in v1.0
+  provider: 'google' | 'ollama';   // AI provider
   apiKey?: string;                 // API key (or use GEMINI_API_KEY env)
   model: string;                   // Model name
+  ollamaHost?: string;             // Ollama server URL (default: http://localhost:11434)
   persona: PersonaName;            // Default persona
   mode: 'fire-and-forget' | 'blocking';
   timeout: number;                 // ms
@@ -710,7 +785,8 @@ src/
 ├── agent.ts              # Core engine (config, executeAgent, dry run)
 ├── types.ts              # All TypeScript interfaces
 ├── providers/
-│   └── google.ts         # ToolLoopAgent + Output.object + jsonSchema
+│   ├── google.ts         # ToolLoopAgent + Output.object + jsonSchema
+│   └── ollama.ts         # ai-sdk-ollama + generateText (local models)
 ├── personas/
 │   ├── index.ts          # Registry, detection, getPersona()
 │   ├── debugger.ts       # 🐛 Debugging expert
@@ -745,6 +821,7 @@ src/
 
 - `@ai-sdk/google` — Google Gemini provider
 - `ai` — Vercel AI SDK (ToolLoopAgent, Output, jsonSchema)
+- `ai-sdk-ollama` — Ollama provider for Vercel AI SDK (local models)
 - `chalk` — Console colors
 - `ora` — Terminal spinners
 

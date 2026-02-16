@@ -1,6 +1,6 @@
 {
   "name": "@console-agent/agent",
-  "version": "1.2.2",
+  "version": "1.2.3",
   "description": "Drop console.agent(...) anywhere in your code to execute agentic workflows — as easy as console.log()",
   "license": "MIT",
   "author": "Pavel",
@@ -59,6 +59,7 @@
   "dependencies": {
     "@ai-sdk/google": "latest",
     "ai": "latest",
+    "ai-sdk-ollama": "^3.7.0",
     "chalk": "latest",
     "ora": "latest",
     "zod": "latest"

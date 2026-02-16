@@ -39,14 +39,65 @@ console.agent.debug("why is this slow?", { duration, query });
 console.agent.architect("review this API design", endpoint);
 ```
 
+## 🔌 Providers
+
+### Google Gemini (default)
+
+Cloud-hosted, full tool support, API key required.
+
+```typescript
+import { init } from '@console-agent/agent';
+
+init({
+  provider: 'google',                    // default
+  apiKey: process.env.GEMINI_API_KEY,
+  model: 'gemini-2.5-flash-lite',
+});
+```
+
+### Ollama (Local Models)
+
+Run models locally with [Ollama](https://ollama.com). Free, private, no API key needed.
+
+```bash
+# 1. Install Ollama: https://ollama.com
+# 2. Pull a model
+ollama pull llama3.2
+```
+
+```typescript
+import { init } from '@console-agent/agent';
+
+init({
+  provider: 'ollama',
+  model: 'llama3.2',                     // any model from `ollama list`
+  ollamaHost: 'http://localhost:11434',   // default
+});
+```
+
+### Provider Comparison
+
+| | Google Gemini | Ollama |
+|---|---|---|
+| Setup | `GEMINI_API_KEY` env var | Install Ollama + pull model |
+| Config | `provider: 'google'` | `provider: 'ollama'` |
+| Models | `gemini-2.5-flash-lite`, etc. | `llama3.2`, any `ollama list` model |
+| Tools | ✅ google_search, code_execution, url_context | ❌ Not supported |
+| Thinking | ✅ Supported | ❌ Not supported |
+| File attachments | ✅ Full support | ⚠️ Text-only |
+| Cost | Pay per token (very cheap) | Free (local) |
+| Privacy | Cloud (with anonymization) | 100% local |
+
 ## Configuration
 
 ```typescript
 import { init } from '@console-agent/agent';
 
 init({
+  provider: 'google',                    // 'google' | 'ollama'
   apiKey: process.env.GEMINI_API_KEY,    // Or set GEMINI_API_KEY env var
   model: 'gemini-2.5-flash-lite',        // Default (fast & cheap)
+  ollamaHost: 'http://localhost:11434',   // Ollama host (when provider='ollama')
   persona: 'general',                     // 'debugger' | 'security' | 'architect' | 'general'
   mode: 'fire-and-forget',               // 'fire-and-forget' | 'blocking'
   timeout: 10000,                         // ms

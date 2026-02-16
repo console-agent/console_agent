@@ -168,12 +168,14 @@ export interface AgentCallOptions {
 export type LogLevel = 'silent' | 'errors' | 'info' | 'debug';
 
 export interface AgentConfig {
-  /** AI provider — only 'google' in v1.0 */
-  provider: 'google';
-  /** Gemini API key */
+  /** AI provider */
+  provider: 'google' | 'ollama';
+  /** Gemini API key (for google provider) */
   apiKey?: string;
   /** Model to use */
   model: string;
+  /** Ollama server URL (default: http://localhost:11434) */
+  ollamaHost: string;
   /** Default persona */
   persona: PersonaName;
   /** Budget controls */
